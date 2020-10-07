@@ -1,0 +1,124 @@
+<!DOCTYPE html><html><head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width">
+<title>さばえまっぷ</title>
+<style>
+body {
+  margin: 0;
+  padding: 0;
+  font-family: sans-serif;
+  background-color: #eef;
+  text-align: center;
+}
+h1 {
+  margin: 0;
+  padding: .2em;
+  color: #228;
+}
+#divmap {
+  height: 75vh
+}
+#footer {
+  font-size: 80%;
+  margin-top: 1em;
+}
+a {
+  color: gray !important;
+}
+</style>
+<link rel='stylesheet' href='https://code4sabae.github.io/leaflet-mjs/leaflet.css'/>
+<script type="module">
+import util from "https://taisukef.github.io/util/util.mjs";
+import { showMap } from "https://sabae-monohaku.jp/showMap.js";
+
+window.onload = async () => {
+  const url = "https://push.sabae.cc/524.csv";
+  const data = await util.fetchCSVtoJSON(url);
+  
+  const map = showMap(data);
+
+  const faci = await fetchCivicFacilitySabae();
+  console.log(faci);
+  const facilayer = getIconsLayer(faci);
+  facilayer.addTo(map);
+  chkfaci.onchange = () => {
+    if (chkfaci.checked) {
+      facilayer.addTo(map);
+    } else {
+      facilayer.remove();
+    }
+  };
+};
+
+const getIconsLayer = (data) => {
+  const iconlayer = L.layerGroup();
+  data.filter((d) => d.lat && d.lng).forEach((d) => {
+    const ll = [d.lat, d.lng];
+    //const fillColor = d.業種.indexOf("料飲") >= 0 ? "#BB4459" : (d.業種.indexOf("眼鏡") >= 0 ? "#48A0BE" : "#BBC459");
+    //const fillColor = d.業種.indexOf("料飲") >= 0 ? "#BB4459" : "#48A0BE";
+    const fillColor = "#33aa55";
+    const marker = L.circleMarker(ll, { title: d.事業所名, fillColor, stroke: false, radius: 8, fillOpacity: 1 });
+    /*
+    const iw = 25;
+    const icon = L.icon({
+      iconUrl: getIcon(d.業種),
+      // iconRetinaUrl: 'sample.png',
+      iconSize: [iw, iw],
+      iconAnchor: [iw / 2, iw / 2],
+      popupAnchor: [0, -iw / 2],
+    });
+    const marker = L.marker(ll, { title: d.事業所名, icon });
+    */
+    marker.bindPopup(`<a href=${d.uri}>${d.name}</a><br>出展：<a href=https://data.city.sabae.lg.jp/>データシティ鯖江 オープンデータ</a>`);
+    iconlayer.addLayer(marker);
+  });
+  return iconlayer;
+};
+
+const fetchCivicFacilitySabae = async () => {
+  const q = `
+    select ?uri ?name ?lat ?lng {
+			?uri <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://purl.org/jrrk#CivicFacility>;
+			<http://purl.org/jrrk#address> ?adr;
+			<http://www.w3.org/2003/01/geo/wgs84_pos#lat> ?lat;
+			<http://www.w3.org/2003/01/geo/wgs84_pos#long> ?lng;
+			<http://www.w3.org/2000/01/rdf-schema#label> ?name.
+			filter(regex(str(?adr), "鯖江")) 
+    } limit 100
+  `;
+ 	const baseurl = "https://sparql.odp.jig.jp/data/sparql";
+  const url = baseurl + "?query=" + encodeURIComponent(q) + "&output=json";
+  const data = await (await fetch(url)).json();
+  const items = data.results.bindings;
+  // console.log(items);
+  const list = [];
+  for (let i = 0; i < items.length; i++) {
+    const it = items[i];
+    const d = {
+      // type: it.type.value,
+      uri: it.uri.value,
+      lat: it.lat.value,
+      lng: it.lng.value,
+      name: it.name.value
+    };
+    list.push(d);
+    // console.log(d.name + " " + d.lat);
+  }
+  return list;
+};
+
+</script>
+</head>
+<body>
+<h1>さばえまっぷ</h1>
+<div id="divmap"></div>
+<label><input id="chkfaci" type="checkbox" checked>鯖江市の公共施設</label>
+
+<div id="footer">
+	<div>App: <a href=https://fukuno.jig.jp/2995>さばえまっぷ</a></div>
+	<div>Data: <a href=https://sabae-monohaku.jp/>さばえものづくり博覧会 オープンデータ提供事業所</a></div>
+	<div>Data: <a href=https://data.city.sabae.lg.jp/>鯖江市オープンデータ、データシティ鯖江（SPARQL API by odp）</a></div>
+	<div>Base App: <a href=https://sabae-monohaku.jp/>さばえものづくり博覧会 オープンソース</a></div>
+</div>
+</body>
+</html>

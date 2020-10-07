@@ -1,4 +1,4 @@
 # map.sabae.cc
 さばえまっぷ  
-http://map.sabae.cc/  
+https://map.sabae.cc/  
 

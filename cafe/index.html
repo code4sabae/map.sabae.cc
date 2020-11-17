@@ -1,0 +1,132 @@
+<!DOCTYPE html><html><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width">
+<meta property="og:image"  content="https://map.sabae.cc/cafe/cafemap.png">
+<meta name="twitter:image" content="https://map.sabae.cc/cafe/cafemap.png">
+<title>さばえカフェまっぷ</title>
+<link rel="stylesheet" href="https://code4sabae.github.io/leaflet-mjs/leaflet.css">
+<style>
+body {
+  margin: 0;
+  padding: 0;
+  font-family: sans-serif;
+  background-color: #fff8f8;
+  text-align: center;
+}
+h1 {
+  margin: 0;
+  font-size: 5vw;
+  padding: .2em;
+  color: #a22;
+}
+#divmap {
+  height: 75vh
+}
+#footer {
+  font-size: 80%;
+  margin-top: 1em;
+}
+a {
+  color: gray !important;
+}
+#divimg {
+  x-height: 30vh;
+  x-overflow: scroll;
+  x-white-space: no-wrap;
+}
+#divimg div {
+  x-display: inline-block;
+  x-height: 30vh;
+  padding-right: 1vh;
+  padding-left: 1vh;
+}
+#divimg img {
+  height: 25vh;
+}
+.leaflet-tile-container { /* 地図の色味変更 CSS3 filter */
+	x-filter: sepia(100%) brightness(95%); /* セピア */
+	filter: grayscale(100%) brightness(110%); /* 明るめグレースケール */
+	x-filter: hue-rotate(-10deg) saturate(70%) brightness(104%); /* いい感じの色 */
+}
+</style>
+<script type="module">
+import { CSV } from "https://code4sabae.github.io/js/CSV.js";
+import L from "https://code4sabae.github.io/leaflet-mjs/leaflet.mjs";
+
+const initMapGSI = () => {
+  const map = L.map("divmap");
+  // set 国土地理院地図 https://maps.gsi.go.jp/development/ichiran.html
+  L.tileLayer("https://cyberjapandata.gsi.go.jp/xyz/std/{z}/{x}/{y}.png", {
+		attribution: '<a href="https://maps.gsi.go.jp/development/ichiran.html">国土地理院</a>"',
+		maxZoom: 18,
+  }).addTo(map);
+  return map;
+};
+
+window.onload = async () => {
+  const url = "https://map.sabae.cc/poi_sabae.csv";
+  const csv = await CSV.fetch(url);
+  // const tbl = CSV.makeTable(csv);
+  // document.body.appendChild(tbl);
+
+  const c = (tag) => document.createElement(tag);
+
+  const map = initMapGSI();
+  const iconlayer = L.layerGroup();
+  iconlayer.addTo(map);
+  const lls = [];
+  const json = CSV.toJSON(csv);
+  for (const item of json) {
+    console.log(item);
+    const ll = item["https://schema.org/geo"].split(",");
+    const name = item["https://schema.org/name"];
+    const category = item["https://schema.org/category"];
+    const url = item["https://schema.org/url"];
+    if (category !== "カフェ") {
+      continue;
+    }
+    const marker = L.marker(ll, { title: name });
+    const html = [];
+    html.push(`<h2><a href=${url}>${name}</a></h2>`);
+    const imgurl = item["https://schema.org/image"];
+    if (imgurl) {
+      html.push(`<img width="100%" src="${imgurl}">`);
+    }
+    marker.bindPopup(html.join(""));
+    iconlayer.addLayer(marker);
+    lls.push(ll);
+
+    // img
+    if (imgurl) {
+      const div = c("div");
+      const img = new Image();
+      img.src = imgurl;
+      const h2 = c("h2");
+      h2.textContent = name;
+      div.appendChild(h2);
+      div.appendChild(img);
+      const a = c("a");
+      a.href = url;
+      a.appendChild(div);
+      divimg.appendChild(a);
+    }
+  }
+  if (lls.length) {
+    map.fitBounds(lls);
+  }
+};
+
+</script>
+</head>
+<body>
+<h1>さばえカフェまっぷ</h1>
+<div id="divmap"></div>
+<div id="divimg"></div>
+
+<div id="footer">
+	<div>App: <a href=https://fukuno.jig.jp/3036>さばえまっぷ</a> (<a href="https://github.com/code4sabae/map.sabae.cc/">src on GitHub / Code for Sabae</a>)</div>
+	<div>Data: <a href="https://github.com/code4sabae/map.sabae.cc/">poi_sabae さばえのいいところ by Code for Sabae</a></div>
+	<div>Map: <a href="https://maps.gsi.go.jp/development/ichiran.html">国土地理院地図</a></div>
+	<div>Domain: <a href="https://sabae.cc/">Sabae Creative Community</a></div>
+</div>
+</body>
+</html>
